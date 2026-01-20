@@ -16,13 +16,12 @@ export function DashboardLayout() {
 
     const links = user?.role === 'teacher' ? [
         { href: '/', label: 'Beranda', icon: Home },
-        { href: '/classes', label: 'Kelas Saya', icon: Users },
-        { href: '/subjects', label: 'Materi', icon: BookOpen },
-        { href: '/grading', label: 'Penilaian', icon: FileText },
+        { href: '/subjects', label: 'Mata Pelajaran', icon: BookOpen },
+        // { href: '/grading', label: 'Penilaian', icon: FileText },
     ] : [
         { href: '/', label: 'Ruang Belajar', icon: Home },
-        { href: '/schedule', label: 'Jadwal', icon: Calendar },
-        { href: '/assignments', label: 'Tugas', icon: FileText },
+        { href: '/my-classes', label: 'Kelas Saya', icon: Users },
+        // { href: '/assignments', label: 'Tugas', icon: FileText },
     ];
 
     return (

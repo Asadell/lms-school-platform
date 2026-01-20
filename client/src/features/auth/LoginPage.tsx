@@ -31,9 +31,16 @@ export default function LoginPage() {
             return response.data;
         },
         onSuccess: (response: any) => {
-            // Backend returns: { success: true, data: { token, user } }
+            console.log('Login response:', response); // Debug log
+            // Backend returns: { success: true, data: { token, userId, username, email, role } }
             if (response.success && response.data) {
-                login(response.data.token, response.data.user);
+                const userData = {
+                    id: response.data.userId,
+                    username: response.data.username,
+                    email: response.data.email,
+                    role: response.data.role
+                };
+                login(response.data.token, userData);
                 navigate('/');
             } else {
                 throw new Error('Format respons tidak valid');
