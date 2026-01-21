@@ -39,12 +39,20 @@ function App() {
             </Route>
 
             {/* Teacher Routes */}
+            <Route element={<RoleGuard roles={['teacher', 'admin']} />}>
+              <Route path="/subjects" element={<SubjectsPage />} />
+              <Route path="/subjects/:id" element={<SubjectDetailPage />} />
+              <Route path="/subjects/:subjectId/materials/new" element={<MaterialFormPage />} />
+              <Route path="/subjects/:subjectId/assignments/new" element={<AssignmentFormPage />} />
+              <Route path="/assignments/:assignmentId/grading" element={<GradingPage />} />
+            </Route>
 
             {/* Student Routes */}
             <Route element={<RoleGuard roles={['student', 'admin']} />}>
               <Route path="/my-classes" element={<MyClassesPage />} />
               <Route path="/my-classes/:id" element={<ClassDetailPage />} />
               <Route path="/learning/:subjectId" element={<SubjectLearningPage />} />
+              <Route path="/learning/assignments/:assignmentId" element={<AssignmentDetailPage />} />
             </Route>
           </Route>
         </Route>

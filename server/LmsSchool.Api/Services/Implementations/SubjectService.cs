@@ -84,6 +84,37 @@ public class SubjectService : ISubjectService
         };
     }
 
+    public async Task<SubjectResponse?> UpdateSubjectAsync(Guid id, UpdateSubjectRequest request)
+    {
+        var subject = await _context.Subjects
+            .Include(s => s.Teacher)
+            .ThenInclude(t => t.User)
+            .FirstOrDefaultAsync(s => s.Id == id);
+
+        if (subject == null) return null;
+
+        // Check unique code if changed
+        if (subject.Code != request.Code)
+        {
+            if (await _context.Subjects.AnyAsync(s => s.Code == request.Code && s.Id != id))
+                return null;
+        }
+
+        subject.Name = request.Name;
+        subject.Code = request.Code;
+
+        await _context.SaveChangesAsync();
+
+        return new SubjectResponse
+        {
+            Id = subject.Id.ToString(),
+            Name = subject.Name,
+            Code = subject.Code,
+            TeacherName = subject.Teacher.User.Username,
+            CreatedAt = subject.CreatedAt
+        };
+    }
+
     public async Task<bool> DeleteSubjectAsync(Guid id)
     {
         var subject = await _context.Subjects.FindAsync(id);

@@ -43,7 +43,29 @@ export function useCreateMaterial() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload: CreateMaterialRequest) => {
-            const { data } = await api.post('/materials', payload);
+            const { data } = await api.post('/materials', {
+                title: payload.title,
+                content: payload.content,
+                subject_id: payload.subjectId,
+                publish_date: payload.publishDate
+            });
+            return data.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['materials'] });
+        },
+    });
+}
+
+export function useUpdateMaterial() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, payload }: { id: string; payload: Partial<CreateMaterialRequest> }) => {
+            const { data } = await api.put(`/materials/${id}`, {
+                title: payload.title,
+                content: payload.content,
+                publish_date: payload.publishDate
+            });
             return data.data;
         },
         onSuccess: () => {

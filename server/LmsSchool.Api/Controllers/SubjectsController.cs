@@ -79,6 +79,30 @@ public class SubjectsController : ControllerBase
         });
     }
 
+    [HttpPut("{id}")]
+    [Authorize(Roles = "admin,teacher")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSubjectRequest request)
+    {
+        var subject = await _subjectService.UpdateSubjectAsync(id, request);
+
+        if (subject == null)
+            return NotFound(new BaseResponse<object, object>
+            {
+                Success = false,
+                Code = "SUB-003",
+                Message = "Subject not found or code already exists",
+                Data = null
+            });
+
+        return Ok(new BaseResponse<object, object>
+        {
+            Success = true,
+            Code = "SUB-000",
+            Message = "Subject updated successfully",
+            Data = subject
+        });
+    }
+
     [HttpDelete("{id}")]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(Guid id)

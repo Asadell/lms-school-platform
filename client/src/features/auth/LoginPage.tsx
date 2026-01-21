@@ -31,14 +31,21 @@ export default function LoginPage() {
             return response.data;
         },
         onSuccess: (response: any) => {
-            console.log('Login response:', response); // Debug log
-            // Backend returns: { success: true, data: { token, userId, username, email, role } }
+            console.log('Login response FULL:', JSON.stringify(response, null, 2));
+            console.log('Data payload:', response.data);
+            if (response.data && response.data.profileId) {
+                console.log('ProfileID found:', response.data.profileId);
+            } else {
+                console.warn('ProfileID MISSING in response!');
+            }
+            // Backend returns: { success: true, data: { token, userId, username, email, role, profileId } }
             if (response.success && response.data) {
                 const userData = {
                     id: response.data.userId,
                     username: response.data.username,
                     email: response.data.email,
-                    role: response.data.role
+                    role: response.data.role,
+                    profileId: response.data.profileId
                 };
                 login(response.data.token, userData);
                 navigate('/');

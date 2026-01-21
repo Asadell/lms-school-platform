@@ -6,6 +6,12 @@ namespace LMS.Models.Requests.Assignments;
 
 public class UpdateAssignmentRequest
 {
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
     [FutureDate(2025, 1, 21)]
     [JsonPropertyName("due_date")]
     public string? DueDate { get; set; }

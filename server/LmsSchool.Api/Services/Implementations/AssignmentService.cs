@@ -92,6 +92,12 @@ public class AssignmentService : IAssignmentService
 
         if (assignment == null) return null;
 
+        if (!string.IsNullOrEmpty(request.Title))
+            assignment.Title = request.Title;
+
+        if (!string.IsNullOrEmpty(request.Description))
+            assignment.Description = request.Description;
+
         if (!string.IsNullOrEmpty(request.DueDate))
             assignment.DueDate = DateTime.Parse(request.DueDate);
 

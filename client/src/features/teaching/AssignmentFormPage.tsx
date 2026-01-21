@@ -1,7 +1,7 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useCreateAssignment } from '../../hooks/useAssignments';
+import { useCreateAssignment, useUpdateAssignment } from '../../hooks/useAssignments';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -9,23 +9,44 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function AssignmentFormPage() {
     const { subjectId } = useParams<{ subjectId: string }>();
+    const [searchParams] = useSearchParams();
+    const assignmentId = searchParams.get('edit'); // ?edit=UUID
+
     const navigate = useNavigate();
     const createMutation = useCreateAssignment();
+    const updateMutation = useUpdateAssignment();
 
-    const { register, handleSubmit, formState: { errors } } = useForm();
+    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
     const onSubmit = async (data: any) => {
         if (!subjectId) return;
 
-        await createMutation.mutateAsync({
-            subjectId,
-            title: data.title,
-            description: data.description,
-            dueDate: new Date(data.dueDate).toISOString(),
-            maxScore: parseInt(data.maxScore)
-        });
-
-        navigate(`/subjects/${subjectId}`);
+        try {
+            if (assignmentId) {
+                await updateMutation.mutateAsync({
+                    id: assignmentId,
+                    payload: {
+                        subjectId, // needed for typing but not used in update usually?
+                        title: data.title,
+                        description: data.description,
+                        dueDate: new Date(data.dueDate).toISOString(),
+                        maxScore: parseInt(data.maxScore)
+                    }
+                });
+            } else {
+                await createMutation.mutateAsync({
+                    subjectId,
+                    title: data.title,
+                    description: data.description,
+                    dueDate: new Date(data.dueDate).toISOString(),
+                    maxScore: parseInt(data.maxScore)
+                });
+            }
+            navigate(`/subjects/${subjectId}`);
+        } catch (error) {
+            console.error("Failed to save assignment:", error);
+            alert("Gagal menyimpan tugas. Cek validasi atau koneksi.");
+        }
     };
 
     return (
@@ -36,7 +57,7 @@ export default function AssignmentFormPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Buat Tugas Baru</CardTitle>
+                    <CardTitle>{assignmentId ? 'Edit Tugas' : 'Buat Tugas Baru'}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -79,8 +100,8 @@ export default function AssignmentFormPage() {
                             <Button type="button" variant="ghost" className="mr-2" onClick={() => navigate(-1)}>
                                 Batal
                             </Button>
-                            <Button type="submit" isLoading={createMutation.isPending}>
-                                Simpan Tugas
+                            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+                                {assignmentId ? 'Simpan Perubahan' : 'Buat Tugas'}
                             </Button>
                         </div>
                     </form>

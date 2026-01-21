@@ -37,7 +37,31 @@ export function useCreateAssignment() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload: CreateAssignmentRequest) => {
-            const { data } = await api.post('/assignments', payload);
+            const { data } = await api.post('/assignments', {
+                title: payload.title,
+                description: payload.description,
+                due_date: payload.dueDate,
+                max_score: payload.maxScore,
+                subject_id: payload.subjectId
+            });
+            return data.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['assignments'] });
+        },
+    });
+}
+
+export function useUpdateAssignment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, payload }: { id: string; payload: Partial<CreateAssignmentRequest> }) => {
+            const { data } = await api.put(`/assignments/${id}`, {
+                title: payload.title,
+                description: payload.description,
+                due_date: payload.dueDate,
+                max_score: payload.maxScore,
+            });
             return data.data;
         },
         onSuccess: () => {

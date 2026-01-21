@@ -14,15 +14,28 @@ export function DashboardLayout() {
         logout();
     };
 
-    const links = user?.role === 'teacher' ? [
-        { href: '/', label: 'Beranda', icon: Home },
-        { href: '/subjects', label: 'Mata Pelajaran', icon: BookOpen },
-        // { href: '/grading', label: 'Penilaian', icon: FileText },
-    ] : [
-        { href: '/', label: 'Ruang Belajar', icon: Home },
-        { href: '/my-classes', label: 'Kelas Saya', icon: Users },
-        // { href: '/assignments', label: 'Tugas', icon: FileText },
-    ];
+    // Define links based on role
+    let links = [];
+
+    if (user?.role === 'admin') {
+        links = [
+            { href: '/', label: 'Dashboard', icon: Home },
+            { href: '/admin/users', label: 'Pengguna', icon: Users },
+            { href: '/admin/classes', label: 'Kelas', icon: BookOpen },
+        ];
+    } else if (user?.role === 'teacher') {
+        links = [
+            { href: '/', label: 'Beranda', icon: Home },
+            { href: '/subjects', label: 'Mata Pelajaran', icon: BookOpen },
+            // Grading is accessed via assignments, but we can add a shortcut if needed
+        ];
+    } else {
+        // Student
+        links = [
+            { href: '/', label: 'Ruang Belajar', icon: Home },
+            { href: '/my-classes', label: 'Kelas Saya', icon: Users },
+        ];
+    }
 
     return (
         <div className="min-h-screen bg-background flex">

@@ -1,67 +1,99 @@
 import React, { useState } from 'react';
-import { useSubjects, useCreateSubject, useDeleteSubject, type Subject } from '../../hooks/useSubjects';
+import { useSubjects, useCreateSubject, useDeleteSubject, useUpdateSubject, type Subject } from '../../hooks/useSubjects';
 import { useAuth } from '../auth/AuthContext';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Plus, BookOpen, Trash2, ArrowRight } from 'lucide-react';
+import { Card, CardContent } from '../../components/ui/Card';
+import { Plus, BookOpen, Trash2, ArrowRight, Edit } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 export default function SubjectsPage() {
     const { user } = useAuth();
     const { data: subjects = [], isLoading } = useSubjects();
     const createMutation = useCreateSubject();
+    const updateMutation = useUpdateSubject();
     const deleteMutation = useDeleteSubject();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const { register, handleSubmit, reset } = useForm();
+    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
     // Filter subjects for this teacher if they are logged in as teacher
     // Admin sees all.
     const mySubjects = user?.role === 'admin'
         ? subjects
-        : subjects.filter(s => s.teacher?.user?.id === user?.id);
-    // Note: This filtering depends on how `teacher.user.id` is populated in the backend hook.
-    // Looking at useSubjects hook, it returns Subject[]. 
-    // Subject interface has `teacher: { user: User }`.
-    // So this should work if backend populates it.
+        : subjects.filter(s => s.teacherId === user?.profileId);
 
     const onCreateSubmit = async (data: any) => {
-        // We need TeacherId. 
-        // If I am a teacher, I use my own TeacherId.
-        // NOTE: The user object only has `id` (userId). 
-        // I need to fetch my Teacher Profile to get `TeacherId`.
-        // OR, I can pass userId and let backend handle it?
-        // Backend `CreateSubjectRequest` expects `TeacherId`.
-        // Current simple AuthContext user doesn't have `teacherId`.
-        // WORKAROUND: For now, I'll filter the teacher from the /users endpoint or similar.
-        // Or assume the backend logic isn't strictly checking teacherId ownership if I pass something else.
-        // Better yet: I should have stored `teacherId` in the user object on login if possible.
-        // Let's assume for this MVP step we might face an issue here.
-        // I'll try to find the teacherId from the subjects list if I already have one subject? 
-        // Or I'll just hardcode or prompt for it if admin?
-        // REALISTIC FIX: The login response should return profileId.
-        // Let's postpone this complexity and assume for "Teacher1" I can find his ID from the subjects list if he has any, 
-        // or I'll add a dirty look up.
+        console.log('Current User State:', user);
 
-        // For now, let's just show the UI structure. creating might fail.
-        await createMutation.mutateAsync({
-            name: data.name,
-            code: data.code,
-            teacherId: "00000000-0000-0000-0000-000000000000" // PLACEHOLDER
-        });
-        setIsCreateModalOpen(false);
-        reset();
+        // We need TeacherId.
+        let teacherId = user?.role === 'teacher' ? user.profileId : null;
+        console.log('Resolved TeacherID:', teacherId);
+
+        if (!teacherId && user?.role === 'teacher') {
+            alert("Error: Profil guru tidak ditemukan. Silakan login ulang.");
+            return;
+        }
+
+        if (user?.role === 'admin' && !teacherId) {
+            alert("Admin: Fitur pilih guru belum tersedia. Login sebagai guru untuk membuat mata pelajaran.");
+            return;
+        }
+
+        try {
+            if (editingSubject) {
+                // Update subject - Note: Backend doesn't have PUT endpoint for subjects yet
+                // So we'll show an alert for now
+                alert("Fitur edit belum tersedia di backend. Silakan hubungi admin untuk menambahkan endpoint PUT /api/subjects/{id}");
+                setEditingSubject(null);
+                reset();
+            } else {
+                await createMutation.mutateAsync({
+                    name: data.name,
+                    code: data.code,
+                    teacherId: teacherId!
+                });
+                setIsCreateModalOpen(false);
+                reset();
+            }
+        } catch (error) {
+            console.error("Failed to save subject:", error);
+            alert("Gagal menyimpan mata pelajaran. Cek input atau koneksi.");
+        }
+    };
+
+    const handleEdit = (e: React.MouseEvent, subject: Subject) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditingSubject(subject);
+        setValue('name', subject.name);
+        setValue('code', subject.code);
     };
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.preventDefault();
-        if (confirm('Jelaskan menghapus mata pelajaran ini?')) {
+        e.stopPropagation();
+        if (confirm('Yakin ingin menghapus mata pelajaran ini?')) {
             await deleteMutation.mutateAsync(id);
         }
     };
+
+    const closeModal = () => {
+        setIsCreateModalOpen(false);
+        setEditingSubject(null);
+        reset();
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-slate-500">Memuat mata pelajaran...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -76,59 +108,96 @@ export default function SubjectsPage() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mySubjects.map((subject) => (
-                    <Link key={subject.id} to={`/subjects/${subject.id}`} className="block group">
-                        <Card className="h-full hover:shadow-md transition-shadow border-brand-100">
-                            <CardContent className="p-6 flex flex-col h-full">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600">
-                                        <BookOpen size={24} />
+            {mySubjects.length === 0 ? (
+                <Card className="p-12 text-center">
+                    <BookOpen size={48} className="mx-auto text-slate-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-700 mb-2">Belum Ada Mata Pelajaran</h3>
+                    <p className="text-slate-500 mb-4">Mulai dengan membuat mata pelajaran pertama Anda.</p>
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus size={18} className="mr-2" />
+                        Buat Mata Pelajaran
+                    </Button>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {mySubjects.map((subject) => (
+                        <Link key={subject.id} to={`/subjects/${subject.id}`} className="block group">
+                            <Card className="h-full hover:shadow-md transition-shadow border-brand-100">
+                                <CardContent className="p-6 flex flex-col h-full">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600">
+                                            <BookOpen size={24} />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-slate-400 hover:text-brand-600"
+                                                onClick={(e) => handleEdit(e, subject)}
+                                            >
+                                                <Edit size={18} />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-slate-400 hover:text-red-500"
+                                                onClick={(e) => handleDelete(e, subject.id)}
+                                            >
+                                                <Trash2 size={18} />
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-slate-400 hover:text-red-500"
-                                        onClick={(e) => handleDelete(e, subject.id)}
-                                    >
-                                        <Trash2 size={18} />
-                                    </Button>
-                                </div>
 
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-                                    {subject.name}
-                                </h3>
-                                <p className="text-sm font-medium text-slate-500 mb-4">{subject.code}</p>
+                                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+                                        {subject.name}
+                                    </h3>
+                                    <p className="text-sm font-medium text-slate-500 mb-4">{subject.code}</p>
 
-                                <div className="mt-auto flex items-center text-sm font-medium text-brand-600">
-                                    Lihat Detail <ArrowRight size={16} className="ml-1" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
-            </div>
+                                    <div className="mt-auto flex items-center text-sm font-medium text-brand-600">
+                                        Lihat Detail <ArrowRight size={16} className="ml-1" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+            )}
 
             <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Buat Mata Pelajaran Baru"
+                isOpen={isCreateModalOpen || !!editingSubject}
+                onClose={closeModal}
+                title={editingSubject ? "Edit Mata Pelajaran" : "Buat Mata Pelajaran Baru"}
             >
                 <form onSubmit={handleSubmit(onCreateSubmit)} className="space-y-4">
                     <Input
                         label="Nama Mata Pelajaran"
                         placeholder="Contoh: Matematika Wajib"
-                        {...register('name', { required: true })}
+                        error={errors.name?.message as string}
+                        {...register('name', { required: 'Nama mata pelajaran wajib diisi' })}
                     />
                     <Input
-                        label="Kode Mapel"
-                        placeholder="MATH101"
-                        {...register('code', { required: true })}
+                        label="Kode Mapel (5 karakter, huruf besar)"
+                        placeholder="MAT01"
+                        maxLength={5}
+                        error={errors.code?.message as string}
+                        {...register('code', {
+                            required: 'Kode wajib diisi',
+                            pattern: {
+                                value: /^[A-Z0-9]{5}$/,
+                                message: 'Kode harus 5 karakter (A-Z, 0-9)'
+                            },
+                            minLength: {
+                                value: 5,
+                                message: 'Kode harus pas 5 karakter'
+                            }
+                        })}
                     />
 
                     <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Batal</Button>
-                        <Button type="submit" isLoading={createMutation.isPending}>Simpan</Button>
+                        <Button type="button" variant="ghost" onClick={closeModal}>Batal</Button>
+                        <Button type="submit" isLoading={createMutation.isPending}>
+                            {editingSubject ? 'Simpan Perubahan' : 'Buat Mata Pelajaran'}
+                        </Button>
                     </div>
                 </form>
             </Modal>

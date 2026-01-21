@@ -6,11 +6,14 @@ import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Plus } from 'lucide-react';
 
+import { CreateUserModal } from './CreateUserModal';
+
 export default function UsersPage() {
     const { data: users = [], isLoading } = useUsers();
     const deleteMutation = useDeleteUser();
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const handleDeleteClick = (user: User) => {
         setSelectedUser(user);
@@ -56,7 +59,7 @@ export default function UsersPage() {
                     <h1 className="text-2xl font-bold text-slate-900">Manajemen Pengguna</h1>
                     <p className="text-slate-500">Kelola akun guru, siswa, dan admin.</p>
                 </div>
-                <Button>
+                <Button onClick={() => setIsCreateModalOpen(true)}>
                     <Plus size={18} className="mr-2" />
                     Tambah User
                 </Button>
@@ -92,6 +95,11 @@ export default function UsersPage() {
                     </div>
                 </div>
             </Modal>
-        </div>
+
+            <CreateUserModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+            />
+        </div >
     );
 }

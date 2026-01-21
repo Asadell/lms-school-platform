@@ -33,6 +33,18 @@ public class AuthService : IAuthService
             return null;
 
         var token = GenerateJwtToken(user);
+        string? profileId = null;
+
+        if (user.Role == "teacher") 
+        {
+            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == user.Id);
+            profileId = teacher?.Id.ToString();
+        }
+        else if (user.Role == "student")
+        {
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
+            profileId = student?.Id.ToString();
+        }
 
         return new LoginResponse
         {
@@ -40,7 +52,8 @@ public class AuthService : IAuthService
             UserId = user.Id.ToString(),
             Username = user.Username,
             Email = user.Email,
-            Role = user.Role
+            Role = user.Role,
+            ProfileId = profileId
         };
     }
 
