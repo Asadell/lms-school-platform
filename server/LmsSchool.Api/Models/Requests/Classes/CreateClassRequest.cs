@@ -10,7 +10,6 @@ public class CreateClassRequest
     [Required]
     [MinLength(3)]
     [MaxLength(100)]
-    [AlphaSpaceQuote]
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -20,7 +19,9 @@ public class CreateClassRequest
     public int GradeLevel { get; set; }
 
     [Required]
-    [Regex(@"^\d{4}/\d{4}$")]
     [JsonPropertyName("academic_year")]
     public string AcademicYear { get; set; } = string.Empty;
+
+    [JsonPropertyName("homeroom_teacher_user_id")]
+    public string? HomeroomTeacherUserId { get; set; }
 }

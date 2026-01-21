@@ -13,4 +13,10 @@ public class UpdateClassRequest
     [Range(1, 12)]
     [JsonPropertyName("grade_level")]
     public int? GradeLevel { get; set; }
+
+    [JsonPropertyName("academic_year")]
+    public string? AcademicYear { get; set; }
+
+    [JsonPropertyName("homeroom_teacher_user_id")]
+    public string? HomeroomTeacherUserId { get; set; }
 }

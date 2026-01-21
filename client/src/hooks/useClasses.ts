@@ -53,7 +53,30 @@ export function useCreateClass() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (payload: CreateClassRequest) => {
-            const { data } = await api.post('/classes', payload);
+            const { data } = await api.post('/classes', {
+                name: payload.name,
+                grade_level: payload.gradeLevel,
+                academic_year: payload.academicYear,
+                homeroom_teacher_user_id: payload.homeroomTeacherId
+            });
+            return data.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['classes'] });
+        },
+    });
+}
+
+export function useUpdateClass() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, payload }: { id: string; payload: Partial<CreateClassRequest> }) => {
+            const { data } = await api.put(`/classes/${id}`, {
+                name: payload.name,
+                grade_level: payload.gradeLevel,
+                academic_year: payload.academicYear,
+                homeroom_teacher_user_id: payload.homeroomTeacherId
+            });
             return data.data;
         },
         onSuccess: () => {

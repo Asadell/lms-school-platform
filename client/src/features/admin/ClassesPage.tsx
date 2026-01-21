@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useClasses, useCreateClass, useDeleteClass, type ClassEntity } from '../../hooks/useClasses';
+import { useClasses, useCreateClass, useUpdateClass, useDeleteClass, type ClassEntity } from '../../hooks/useClasses';
 import { useUsers } from '../../hooks/useUsers';
 import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
@@ -12,16 +12,37 @@ export default function ClassesPage() {
     const { data: classes = [], isLoading } = useClasses();
     const { data: users = [] } = useUsers();
     const createMutation = useCreateClass();
+    const updateMutation = useUpdateClass();
     const deleteMutation = useDeleteClass();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedClass, setSelectedClass] = useState<ClassEntity | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [editingClass, setEditingClass] = useState<ClassEntity | null>(null);
 
-    const { register, handleSubmit, reset } = useForm();
+    const { register, handleSubmit, reset, setValue } = useForm();
 
     // Filter only teachers for dropdown
     const teachers = users.filter(u => u.role === 'teacher');
+
+    const handleEditClick = (cls: ClassEntity) => {
+        setEditingClass(cls);
+        setValue('name', cls.name);
+        setValue('gradeLevel', cls.gradeLevel);
+        setValue('academicYear', cls.academicYear);
+        // Map Teacher ID. Note: homeroomTeacher has User which has ID.
+        // We need to set the SELECT value that matches option value.
+        // Backend now expects UserID for homeroomTeacherUserId.
+        // cls.homeroomTeacher?.user?.id is the USER ID.
+        // The Select Options use t.id which is USER ID.
+        // So this matches perfectly now!
+        if (cls.homeroomTeacher?.user?.id) {
+            setValue('homeroomTeacherId', cls.homeroomTeacher.user.id);
+        } else {
+            setValue('homeroomTeacherId', '');
+        }
+        setIsCreateModalOpen(true);
+    };
 
     const handleDeleteClick = (cls: ClassEntity) => {
         setSelectedClass(cls);
@@ -36,15 +57,37 @@ export default function ClassesPage() {
         }
     };
 
-    const onCreateSubmit = async (data: any) => {
-        await createMutation.mutateAsync({
-            name: data.name,
-            gradeLevel: parseInt(data.gradeLevel),
-            academicYear: data.academicYear,
-            homeroomTeacherId: data.homeroomTeacherId || null
-        });
+    const handleCloseModal = () => {
         setIsCreateModalOpen(false);
+        setEditingClass(null);
         reset();
+    };
+
+    const onCreateSubmit = async (data: any) => {
+        try {
+            if (editingClass) {
+                await updateMutation.mutateAsync({
+                    id: editingClass.id,
+                    payload: {
+                        name: data.name,
+                        gradeLevel: parseInt(data.gradeLevel),
+                        academicYear: data.academicYear,
+                        homeroomTeacherId: data.homeroomTeacherId || null
+                    }
+                });
+            } else {
+                await createMutation.mutateAsync({
+                    name: data.name,
+                    gradeLevel: parseInt(data.gradeLevel),
+                    academicYear: data.academicYear,
+                    homeroomTeacherId: data.homeroomTeacherId || null
+                });
+            }
+            handleCloseModal();
+        } catch (error) {
+            console.error("Failed to save class", error);
+            alert("Gagal menyimpan kelas.");
+        }
     };
 
     const columns = [
@@ -75,14 +118,14 @@ export default function ClassesPage() {
                 columns={columns}
                 isLoading={isLoading}
                 onDelete={handleDeleteClick}
-                onEdit={(cls) => console.log('Edit', cls)}
+                onEdit={handleEditClick}
             />
 
-            {/* CREATE MODAL */}
+            {/* CREATE/EDIT MODAL */}
             <Modal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Buat Kelas Baru"
+                onClose={handleCloseModal}
+                title={editingClass ? "Edit Kelas" : "Buat Kelas Baru"}
             >
                 <form onSubmit={handleSubmit(onCreateSubmit)} className="space-y-4">
                     <Input
@@ -108,18 +151,7 @@ export default function ClassesPage() {
                         <label className="block text-sm font-medium text-slate-700">Wali Kelas</label>
                         <select
                             className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                            {...register('homeroomTeacherId')} // Note: In real app, we need TeacherId, but User list gives UserID. 
-                        // The backend CreateClassRequest expects HomeroomTeacherId (Teacher Entity ID).
-                        // The users list gives us User Entities. We need to fetch Teachers specifically or map it.
-                        // For now, let's assume the backend might accept UserId or we need a useTeachers hook.
-                        // Checking DbSeeder: Teacher entity has UserId.
-                        // Checking ClassesController: It likely expects Teacher.Id, not User.Id.
-                        // This is a potential bug unless I fix it.
-                        // FIX: I should create useTeachers hook, or for now just leave optional?
-                        // I'll leave as optional for MVP or try to map if I can.
-                        // Actually, I can't easily map User.Id to Teacher.Id without fetching teachers.
-                        // I'll make a quick useTeachers hook if needed, or simply skip for now.
-                        // Let's create `useTeachers` quickly in next step to be robust. 
+                            {...register('homeroomTeacherId')}
                         >
                             <option value="">Pilih Wali Kelas</option>
                             {teachers.map(t => (
@@ -129,8 +161,10 @@ export default function ClassesPage() {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Batal</Button>
-                        <Button type="submit" isLoading={createMutation.isPending}>Simpan</Button>
+                        <Button type="button" variant="ghost" onClick={handleCloseModal}>Batal</Button>
+                        <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+                            {editingClass ? 'Simpan Perubahan' : 'Buat Kelas'}
+                        </Button>
                     </div>
                 </form>
             </Modal>

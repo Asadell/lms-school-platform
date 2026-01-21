@@ -54,26 +54,30 @@ public class ClassService : IClassService
 
     public async Task<ClassResponse> CreateClassAsync(CreateClassRequest request)
     {
+        Guid? teacherId = null;
+        if (!string.IsNullOrEmpty(request.HomeroomTeacherUserId))
+        {
+            var teacherUserId = Guid.Parse(request.HomeroomTeacherUserId);
+            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == teacherUserId);
+            if (teacher != null) teacherId = teacher.Id;
+        }
+
         var newClass = new Class
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
             GradeLevel = request.GradeLevel,
             AcademicYear = request.AcademicYear,
+            HomeroomTeacherId = teacherId,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.Classes.Add(newClass);
         await _context.SaveChangesAsync();
 
-        return new ClassResponse
-        {
-            Id = newClass.Id.ToString(),
-            Name = newClass.Name,
-            GradeLevel = newClass.GradeLevel,
-            AcademicYear = newClass.AcademicYear,
-            CreatedAt = newClass.CreatedAt
-        };
+        // Re-fetch to get Teacher details (or optimize with known data)
+        var createdClass = await GetClassByIdAsync(newClass.Id);
+        return createdClass!;
     }
 
     public async Task<ClassResponse?> UpdateClassAsync(Guid id, UpdateClassRequest request)
@@ -86,17 +90,23 @@ public class ClassService : IClassService
 
         if (request.GradeLevel.HasValue)
             classEntity.GradeLevel = request.GradeLevel.Value;
+            
+        if (!string.IsNullOrEmpty(request.AcademicYear))
+            classEntity.AcademicYear = request.AcademicYear;
+
+        if (!string.IsNullOrEmpty(request.HomeroomTeacherUserId))
+        {
+            var teacherUserId = Guid.Parse(request.HomeroomTeacherUserId);
+            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == teacherUserId);
+            if (teacher != null) classEntity.HomeroomTeacherId = teacher.Id;
+            else classEntity.HomeroomTeacherId = null; // Or keep current? Usually null means explicitly clearing or invalid if we enforced it. 
+            // If ID is passed but invalid, let's treat as null or failure? 
+            // For now: if teacher not found but ID passed, ignore or nullify. Let's nullify to match "clearing".
+        }
 
         await _context.SaveChangesAsync();
-
-        return new ClassResponse
-        {
-            Id = classEntity.Id.ToString(),
-            Name = classEntity.Name,
-            GradeLevel = classEntity.GradeLevel,
-            AcademicYear = classEntity.AcademicYear,
-            CreatedAt = classEntity.CreatedAt
-        };
+        
+        return (await GetClassByIdAsync(id))!;
     }
 
     public async Task<bool> DeleteClassAsync(Guid id)
